@@ -1,0 +1,11 @@
+image: python:latest
+
+stages:
+  - test
+
+test:
+  stage: test
+  before_script:
+    - pip install --no-cache-dir --requirement requirements.txt
+  script:
+    - FLASK_ENV=testing PYTHONPATH=${PWD} pytest --cov=${PWD}
