@@ -3,13 +3,14 @@ import sys
 
 from authlib.integrations.requests_client import OAuth2Session
 from flask import Flask
-from flask import jsonify, request
-from requests import get, post
-from requests.auth import AuthBase, HTTPBasicAuth
+from flask import jsonify, redirect, request, url_for
+from requests import get
+from requests.auth import HTTPBasicAuth
+
+from fetch import fetch
 
 baseUrl = None
 client = None
-token = None
 
 
 def create_app():
@@ -39,17 +40,6 @@ def create_app():
 app = create_app()
 
 
-class BearerAuth(AuthBase):
-    token = None
-
-    def __init__(self, token):
-        self.token = token
-
-    def __call__(self, r):
-        r.headers["authorization"] = "Bearer " + self.token
-        return r
-
-
 @app.route("/notifications")
 def get_notifications():
     r = get(baseUrl + '/v3/notifications', auth=HTTPBasicAuth(app.config['CLIENT_ID'], app.config['CLIENT_SECRET']))
@@ -58,25 +48,17 @@ def get_notifications():
 
 @app.route("/oauth2_callback", methods=['GET'])
 def oauth2_callback():
-    global token
     if request.args.get('error'):
         app.logger.error('Error retrieving code: ' + request.args.get('error'))
         return 'Error'
     token_endpoint = 'https://polarremote.com/v2/oauth2/token'
     t = client.fetch_token(token_endpoint, authorization_response=request.url)
-    token = t['access_token']
-    app.logger.info('Access token: ' + token)
-    return 'Authorized!'
-
-
-@app.route("/users/<user_id>/activity-transactions/<transaction_id>/activities/<activity_id>/step-samples")
-def get_step_samples(user_id=None, transaction_id=None, activity_id=None):
-    r = get(baseUrl + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id + "/step-samples", auth=BearerAuth(token=token))
-    app.logger.debug(r.json())
-    if r.status_code == 200:
-        return jsonify(r.json())
-    if r.status_code == 204:
-        return 'No new data available'
+    app.config.update(
+        ACCESS_TOKEN=t['access_token'],
+        USER_ID=str(t['x_user_id'])
+    )
+    app.logger.info('Acquired access token: ' + app.config['ACCESS_TOKEN'])
+    return redirect(url_for('index'))
 
 
 @app.route("/users/<user_id>")
@@ -87,15 +69,18 @@ def get_user_info(user_id=None):
 
 
 @app.route('/')
-def hello_world():
+def index():
     if app.config['ENV'] == 'testing':
         return 'Hello, World!'
-    global client
-    client = OAuth2Session(app.config['CLIENT_ID'], app.config['CLIENT_SECRET'], scope='accesslink.read_all')
-    authorization_endpoint = 'https://flow.polar.com/oauth2/authorization'
-    uri, state = client.create_authorization_url(authorization_endpoint)
-    app.logger.debug(uri)
-    return 'Hello, World!'
+    if 'ACCESS_TOKEN' not in app.config:
+        global client
+        client = OAuth2Session(app.config['CLIENT_ID'], app.config['CLIENT_SECRET'], scope='accesslink.read_all')
+        authorization_endpoint = 'https://flow.polar.com/oauth2/authorization'
+        uri, state = client.create_authorization_url(authorization_endpoint)
+        app.logger.info('Redirecting user to Polar Flow\'s OAuth page...')
+        return redirect(uri)
+    fetch(token=app.config['ACCESS_TOKEN'], user_id=app.config['USER_ID'])
+    return 'Fetching data...'
 
 
 if __name__ == '__main__':

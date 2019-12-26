@@ -6,7 +6,7 @@ from requests import post, get
 from requests.auth import AuthBase
 
 BASE_URL = 'https://www.polaraccesslink.com'
-logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', level=logging.DEBUG)
+logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s', level=logging.DEBUG)
 logger = logging.getLogger('fetch')
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
@@ -23,10 +23,19 @@ class BearerAuth(AuthBase):
 
 
 @click.command()
-@click.option('-d', '--data', required=True, envvar='DATA_DIR', help='Directory to store the data')
+@click.option('-d', '--data', envvar='DATA_DIR', help='Directory to store the data')
 @click.option('-t', '--token', required=True, envvar='ACCESS_TOKEN', help='OAuth2 Access Token.')
 @click.option('-u', '--user-id', required=True, envvar='USER_ID', help='Polar user id.')
+def fetch_command(token, user_id, data=None):
+    fetch(token=token, user_id=user_id)
+
+
 def fetch(token=None, user_id=None):
+    """
+
+    :param token: OAuth2 access token
+    :param user_id: Polar user id
+    """
     r = post(BASE_URL + '/v3/users/' + user_id + '/activity-transactions', auth=BearerAuth(token=token))
     if r.status_code == 201:
         j = r.json()
@@ -36,8 +45,16 @@ def fetch(token=None, user_id=None):
 
 
 def get_activities(token=None, user_id=None, transaction_id=None):
-    r = get(BASE_URL + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id,
-            auth=BearerAuth(token=token))
+    """ Fetches all of available activity summaries
+
+    Makes one call to the API, fetching a list of all available daily summaries
+    then calls get_activity_summary() to effectively download the data.
+
+    :param token: OAuth2 access token
+    :param user_id: Polar user id
+    :param transaction_id: The initiated transaction
+    """
+    r = get(BASE_URL + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id, auth=BearerAuth(token=token))
     if r.status_code == 200:
         j = r.json()
         for i in j[u'activity-log']:
@@ -48,9 +65,14 @@ def get_activities(token=None, user_id=None, transaction_id=None):
 
 
 def get_activity_summary(token=None, user_id=None, transaction_id=None, activity_id=None):
-    r = get(
-        BASE_URL + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id,
-        auth=BearerAuth(token=token))
+    """ Download one daily activity summary
+
+    :param token: OAuth2 access token
+    :param user_id: Polar user id
+    :param transaction_id: The initiated transaction
+    :param activity_id: Summary to be downloaded
+    """
+    r = get(BASE_URL + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id, auth=BearerAuth(token=token))
     if r.status_code == 200:
         j = r.json()
         logger.info('Fetching activity summary of ' + j['date'] + '...')
@@ -59,4 +81,4 @@ def get_activity_summary(token=None, user_id=None, transaction_id=None, activity
 
 
 if __name__ == '__main__':
-    fetch()
+    fetch_command()
