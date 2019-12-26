@@ -9,3 +9,4 @@ test:
     - pip install --no-cache-dir --requirement requirements.txt
   script:
     - FLASK_ENV=testing PYTHONPATH=${PWD} pytest --cov=${PWD}
+  coverage: '/TOTAL.*\s+(\d+%)$/'
