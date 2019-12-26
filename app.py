@@ -69,48 +69,11 @@ def oauth2_callback():
     return 'Authorized!'
 
 
-@app.route("/users/<user_id>/activity-transactions/<transaction_id>/activities/<activity_id>")
-def get_activity_summary(user_id=None, transaction_id=None, activity_id=None):
-    r = get(baseUrl + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id, auth=BearerAuth(token=token))
-    app.logger.debug(r.json())
-    if r.status_code == 200:
-        return jsonify(r.json())
-
-
 @app.route("/users/<user_id>/activity-transactions/<transaction_id>/activities/<activity_id>/step-samples")
 def get_step_samples(user_id=None, transaction_id=None, activity_id=None):
     r = get(baseUrl + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id + "/step-samples", auth=BearerAuth(token=token))
     app.logger.debug(r.json())
     if r.status_code == 200:
-        return jsonify(r.json())
-    if r.status_code == 204:
-        return 'No new data available'
-
-
-@app.route("/users/<user_id>/activity-transactions/<transaction_id>")
-def get_activities(user_id=None, transaction_id=None):
-    r = get(baseUrl + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id, auth=BearerAuth(token=token))
-    app.logger.debug(r.status_code)
-    if r.status_code == 200:
-        json = r.json()
-        app.logger.debug(json[u'activity-log'])
-        for i in json[u'activity-log']:
-            activity_id = i.split('/')[-1]
-            get_activity_summary(user_id, transaction_id, activity_id)
-            get_step_samples(user_id, transaction_id, activity_id)
-        return jsonify(json)
-    if r.status_code == 404:
-        return "Activity not found"
-    return "error"
-
-
-@app.route("/users/<user_id>/activity-transactions")
-def initiate_activity_transaction(user_id=None):
-    r = post(baseUrl + '/v3/users/' + user_id + '/activity-transactions', auth=BearerAuth(token=token))
-    if r.status_code == 201:
-        app.logger.debug(r.json())
-        json = r.json()
-        app.logger.debug(json[u'transaction-id'])
         return jsonify(r.json())
     if r.status_code == 204:
         return 'No new data available'

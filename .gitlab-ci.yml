@@ -1,5 +1,9 @@
 image: python:latest
 
+include:
+  - template: Dependency-Scanning.gitlab-ci.yml
+  - template: License-Management.gitlab-ci.yml
+
 stages:
   - test
 
