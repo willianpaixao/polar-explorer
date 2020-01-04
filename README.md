@@ -1,7 +1,7 @@
 # Polar Exporter
 
-[![pipeline status](https://gitlab.com/willianpaixao/polar-explorer2/badges/master/pipeline.svg)](https://gitlab.com/willianpaixao/polar-explorer2/commits/master)
-[![coverage report](https://gitlab.com/willianpaixao/polar-explorer2/badges/master/coverage.svg)](https://gitlab.com/willianpaixao/polar-explorer2/commits/master)
+[![pipeline status](https://gitlab.com/willianpaixao/polar-explorer/badges/master/pipeline.svg)](https://gitlab.com/willianpaixao/polar-explorer/commits/master)
+[![coverage report](https://gitlab.com/willianpaixao/polar-explorer/badges/master/coverage.svg)](https://gitlab.com/willianpaixao/polar-explorer/commits/master)
 
 An experimental project to extract data from [Polar Accesslink API](https://www.polar.com/accesslink-api), store locally and allow plot dashboards.
 

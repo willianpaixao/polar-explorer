@@ -2,26 +2,17 @@ import os
 import sys
 
 from authlib.integrations.requests_client import OAuth2Session
-from flask import Flask
-from flask import jsonify, redirect, request, url_for
-from requests import get
-from requests.auth import HTTPBasicAuth
+from flask import Flask, redirect, render_template, request, url_for, session
 
-from fetch import fetch
-
-baseUrl = None
 client = None
 
 
 def create_app():
-    global app
     app = Flask(__name__)
-    with app.app_context():
-        import db
-        db.init_app(app)
+
     if app.config['ENV'] == 'development':
         app.config.from_object('default.DevelopmentConfig')
-        if not os.environ['SECRETS_FILE']:
+        if 'SECRETS_FILE' not in os.environ:
             app.logger.error("Secret file not provided, aborting...")
             sys.exit()
         try:
@@ -29,43 +20,33 @@ def create_app():
         except SyntaxError:
             app.logger.error("Invalid secret file '%s', aborting...", os.environ['SECRETS_FILE'])
             sys.exit()
-        global baseUrl
-        baseUrl = app.config['BASE_URL']
         app.logger.info("Configuration loaded successfully")
     if app.config['ENV'] == 'testing':
         app.config.from_object('default.TestingConfig')
+
+    from fetch import fetch
+    app.register_blueprint(fetch)
+
     return app
 
 
 app = create_app()
 
 
-@app.route("/notifications")
-def get_notifications():
-    r = get(baseUrl + '/v3/notifications', auth=HTTPBasicAuth(app.config['CLIENT_ID'], app.config['CLIENT_SECRET']))
-    return jsonify(r.json())
-
-
 @app.route("/oauth2_callback", methods=['GET'])
 def oauth2_callback():
+    global client
     if request.args.get('error'):
         app.logger.error('Error retrieving code: ' + request.args.get('error'))
         return 'Error'
     token_endpoint = 'https://polarremote.com/v2/oauth2/token'
-    t = client.fetch_token(token_endpoint, authorization_response=request.url)
+    session['token'] = client.fetch_token(token_endpoint, authorization_response=request.url)
     app.config.update(
-        ACCESS_TOKEN=t['access_token'],
-        USER_ID=str(t['x_user_id'])
+        ACCESS_TOKEN=session['token']['access_token'],
+        USER_ID=str(session['token']['x_user_id'])
     )
     app.logger.info('Acquired access token: ' + app.config['ACCESS_TOKEN'])
     return redirect(url_for('index'))
-
-
-@app.route("/users/<user_id>")
-def get_user_info(user_id=None):
-    r = get(baseUrl + '/v3/users/' + user_id, auth=BearerAuth(token=token))
-    if r.status_code == 200:
-        return r.text
 
 
 @app.route('/')
@@ -77,10 +58,8 @@ def index():
         client = OAuth2Session(app.config['CLIENT_ID'], app.config['CLIENT_SECRET'], scope='accesslink.read_all')
         authorization_endpoint = 'https://flow.polar.com/oauth2/authorization'
         uri, state = client.create_authorization_url(authorization_endpoint)
-        app.logger.info('Redirecting user to Polar Flow\'s OAuth page...')
-        return redirect(uri)
-    fetch(token=app.config['ACCESS_TOKEN'], user_id=app.config['USER_ID'])
-    return 'Fetching data...'
+        return render_template('index.html', uri=uri)
+    return redirect(url_for('fetch.get_user_info', user_id=session['token']['x_user_id']))
 
 
 if __name__ == '__main__':

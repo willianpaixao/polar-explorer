@@ -1,14 +1,11 @@
 import json
-import logging
 
 import click
+from flask import abort, Blueprint, current_app, jsonify
 from requests import post, get
-from requests.auth import AuthBase
+from requests.auth import AuthBase, HTTPBasicAuth
 
-BASE_URL = 'https://www.polaraccesslink.com'
-logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s', level=logging.DEBUG)
-logger = logging.getLogger('fetch')
-logging.getLogger("urllib3").setLevel(logging.WARNING)
+fetch = Blueprint('fetch', __name__, cli_group=None)
 
 
 class BearerAuth(AuthBase):
@@ -22,26 +19,26 @@ class BearerAuth(AuthBase):
         return r
 
 
-@click.command()
+@fetch.cli.command('fetch')
 @click.option('-d', '--data', envvar='DATA_DIR', help='Directory to store the data')
 @click.option('-t', '--token', required=True, envvar='ACCESS_TOKEN', help='OAuth2 Access Token.')
 @click.option('-u', '--user-id', required=True, envvar='USER_ID', help='Polar user id.')
 def fetch_command(token, user_id, data=None):
-    fetch(token=token, user_id=user_id)
+    fetch_fn(token=token, user_id=user_id)
 
 
-def fetch(token=None, user_id=None):
+def fetch_fn(token=None, user_id=None):
     """
 
     :param token: OAuth2 access token
     :param user_id: Polar user id
     """
-    r = post(BASE_URL + '/v3/users/' + user_id + '/activity-transactions', auth=BearerAuth(token=token))
+    r = post(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions', auth=BearerAuth(token=token))
     if r.status_code == 201:
         j = r.json()
         get_activities(token=token, user_id=user_id, transaction_id=str(j[u'transaction-id']))
     if r.status_code == 204:
-        logger.info('No new data available')
+        current_app.logger.info('No new data available')
 
 
 def get_activities(token=None, user_id=None, transaction_id=None):
@@ -54,14 +51,16 @@ def get_activities(token=None, user_id=None, transaction_id=None):
     :param user_id: Polar user id
     :param transaction_id: The initiated transaction
     """
-    r = get(BASE_URL + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id, auth=BearerAuth(token=token))
+    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id,
+            auth=BearerAuth(token=token))
     if r.status_code == 200:
         j = r.json()
         for i in j[u'activity-log']:
             activity_id = i.split('/')[-1]
             get_activity_summary(token=token, user_id=user_id, transaction_id=transaction_id, activity_id=activity_id)
-    if r.status_code == 404:
-        logger.error("Activity not found")
+    elif r.status_code == 404:
+        current_app.logger.error("Activity not found")
+        abort(404)
 
 
 def get_activity_summary(token=None, user_id=None, transaction_id=None, activity_id=None):
@@ -72,13 +71,27 @@ def get_activity_summary(token=None, user_id=None, transaction_id=None, activity
     :param transaction_id: The initiated transaction
     :param activity_id: Summary to be downloaded
     """
-    r = get(BASE_URL + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id, auth=BearerAuth(token=token))
+    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id, auth=BearerAuth(token=token))
     if r.status_code == 200:
         j = r.json()
-        logger.info('Fetching activity summary of ' + j['date'] + '...')
+        current_app.logger.info('Fetching activity summary of ' + j['date'] + '...')
         with open('daily-summary-' + str(j['id']) + '.json', 'w') as f:
             json.dump(j, f, indent=2)
 
 
-if __name__ == '__main__':
-    fetch_command()
+@fetch.route("/notifications")
+def get_notifications():
+    r = get(current_app.config['BASE_URL'] + '/v3/notifications', auth=HTTPBasicAuth(current_app.config['CLIENT_ID'], current_app.config['CLIENT_SECRET']))
+    return jsonify(r.json())
+
+
+@fetch.route("/users/<user_id>")
+def get_user_info(user_id):
+    """ Request profile information on the user
+
+    :param user_id: Polar user id
+    :return: User information in a JSON format
+    """
+    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+    if r.status_code == 200:
+        return jsonify(r.json())
