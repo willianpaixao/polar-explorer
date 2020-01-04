@@ -1,15 +1,12 @@
 import pytest
 
 import app
-import db
 
 
 @pytest.fixture
 def client():
     """ Creating an interface to mock a running application."""
     with app.app.test_client() as client:
-        with app.app.app_context():
-            db.init_db()
         yield client
 
 
