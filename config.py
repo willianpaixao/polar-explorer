@@ -15,6 +15,7 @@ class DevelopmentConfig(Config):
 
     dictConfig({
         'version': 1,
+        'disable_existing_loggers': True,
         'formatters': {
             'default': {
                 'format': '[%(asctime)s] %(levelname)s: %(message)s',

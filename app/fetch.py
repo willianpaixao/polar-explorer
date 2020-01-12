@@ -51,8 +51,7 @@ def get_activities(token=None, user_id=None, transaction_id=None):
     :param user_id: Polar user id
     :param transaction_id: The initiated transaction
     """
-    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id,
-            auth=BearerAuth(token=token))
+    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id, auth=BearerAuth(token=token))
     if r.status_code == 200:
         j = r.json()
         for i in j[u'activity-log']:
