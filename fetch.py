@@ -2,7 +2,7 @@ import json
 
 import click
 from flask import Blueprint, current_app, jsonify, render_template, redirect, url_for
-from requests import post, get
+from requests import get, post, put
 from requests.auth import AuthBase, HTTPBasicAuth
 
 fetch = Blueprint('fetch', __name__, cli_group=None)
@@ -21,26 +21,39 @@ class BearerAuth(AuthBase):
         return r
 
 
+@fetch.route("/notifications")
+def get_notifications():
+    r = get(current_app.config['BASE_URL'] + '/v3/notifications', auth=HTTPBasicAuth(current_app.config['CLIENT_ID'], current_app.config['CLIENT_SECRET']))
+    return jsonify(r.json())
+
+
 @fetch.cli.command('fetch')
 @click.option('-d', '--data', envvar='DATA_DIR', help='Directory to store the data')
 @click.option('-t', '--token', required=True, envvar='ACCESS_TOKEN', help='OAuth2 Access Token.')
 @click.option('-u', '--user-id', required=True, envvar='USER_ID', help='Polar user id.')
 def fetch_command(token, user_id):
-    fetch_fn(token=token, user_id=user_id)
+    get_activities_list(token=token, user_id=user_id)
 
 
-def fetch_fn(token=None, user_id=None):
+@fetch.route("/users/<int:user_id>/activity-transactions")
+def get_activities_list(token=None, user_id=None):
     """
 
     :param token: OAuth2 access token
     :param user_id: Polar user id
     """
-    r = post(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions', auth=BearerAuth(token=token))
+    if not token:
+        token = current_app.config['ACCESS_TOKEN']
+    current_app.logger.debug("Starting an activity transaction")
+    url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/activity-transactions'
+    r = post(url=url, auth=BearerAuth(token=token))
     if r.status_code == 201:
         j = r.json()
-        get_activities(token=token, user_id=user_id, transaction_id=str(j[u'transaction-id']))
+        get_activities(token=token, user_id=user_id, transaction_id=j[u'transaction-id'])
+        return redirect(url_for('fetch.get_notifications'))
     if r.status_code == 204:
         current_app.logger.info('No new data available')
+        return redirect(url_for('fetch.get_notifications'))
 
 
 def get_activities(token=None, user_id=None, transaction_id=None):
@@ -53,37 +66,47 @@ def get_activities(token=None, user_id=None, transaction_id=None):
     :param user_id: Polar user id
     :param transaction_id: The initiated transaction
     """
-    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id, auth=BearerAuth(token=token))
+    if not token:
+        token = current_app.config['ACCESS_TOKEN']
+    url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/activity-transactions/' + str(transaction_id)
+    r = get(url=url, auth=BearerAuth(token=token))
     if r.status_code == 200:
         j = r.json()
         for i in j[u'activity-log']:
             activity_id = i.split('/')[-1]
-            get_activity_summary(token=token, user_id=user_id, transaction_id=transaction_id, activity_id=activity_id)
+            r = get(current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/activity-transactions/' + str(transaction_id) + "/activities/" + str(activity_id), auth=BearerAuth(token=token))
+            if r.status_code == 200:
+                j = r.json()
+                current_app.logger.info('Fetching activity summary of ' + j['date'])
+                with open('daily-summary-' + str(j['id']) + '.json', 'w') as f:
+                    json.dump(j, f, indent=2)
+        current_app.logger.debug("Closing an activity transaction")
+        r = put(url=url, auth=BearerAuth(token=token))
+        if r.status_code == 200:
+            current_app.logger.info("All activity information was successfully downloaded")
     elif r.status_code == 404:
         current_app.logger.error("Activity not found")
         return render_template('404.html')
 
 
-def get_activity_summary(token=None, user_id=None, transaction_id=None, activity_id=None):
-    """ Download one daily activity summary
+@fetch.route("/users/<int:user_id>/exercise-transactions")
+def get_exercise_list(token=None, user_id=None):
+    """
 
     :param token: OAuth2 access token
     :param user_id: Polar user id
-    :param transaction_id: The initiated transaction
-    :param activity_id: Summary to be downloaded
     """
-    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id + '/activity-transactions/' + transaction_id + "/activities/" + activity_id, auth=BearerAuth(token=token))
-    if r.status_code == 200:
-        j = r.json()
-        current_app.logger.info('Fetching activity summary of ' + j['date'] + '...')
-        with open('daily-summary-' + str(j['id']) + '.json', 'w') as f:
-            json.dump(j, f, indent=2)
-
-
-@fetch.route("/notifications")
-def get_notifications():
-    r = get(current_app.config['BASE_URL'] + '/v3/notifications', auth=HTTPBasicAuth(current_app.config['CLIENT_ID'], current_app.config['CLIENT_SECRET']))
-    return jsonify(r.json())
+    if not token:
+        token = current_app.config['ACCESS_TOKEN']
+    current_app.logger.debug("Starting an exercise transaction")
+    url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/exercise-transactions'
+    r = post(url=url, auth=BearerAuth(token=token))
+    current_app.logger.error(r.status_code)
+    if r.status_code == 201:
+        return jsonify(r.json())
+    elif r.status_code == 204:
+        current_app.logger.info('No new data available')
+        return render_template('204.html')
 
 
 @fetch.route("/users/<int:user_id>/physical-information-transactions/<int:transaction_id>")
@@ -95,12 +118,14 @@ def list_user_physical_info(user_id, transaction_id):
         for i in j[u'physical-informations']:
             s = get(url=i, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
             k = s.json()
-            current_app.logger.info('Fetching physical information of ' + k['created'] + '...')
+            current_app.logger.info('Fetching physical information of ' + k['created'])
             with open('physical-information-' + str(k['id']) + '.json', 'w') as f:
                 json.dump(k, f, indent=2)
-        r = post(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+        r = put(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+        current_app.logger.info(r.status_code)
         if r.status_code == 200:
-            return redirect(url_for('fetch.notifications'))
+            current_app.logger.info('All physical information was successfully downloaded')
+            return redirect(url_for('fetch.get_notifications'))
     elif r.status_code == 204:
         current_app.logger.info('No new data available')
         return render_template('204.html')
@@ -117,10 +142,9 @@ def get_user_physical_info(user_id):
     """
     url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/physical-information-transactions'
     r = post(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
-    j = r.json()
     if r.status_code == 201:
-        current_app.logger.info(j['transaction-id'])
-        return jsonify(r.json())
+        j = r.json()
+        return redirect(url_for('fetch.list_user_physical_info', user_id=user_id, transaction_id=j['transaction-id']))
     elif r.status_code == 204:
         current_app.logger.info('No new data available')
         return render_template('204.html')

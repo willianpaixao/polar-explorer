@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 authlib = "*"
 flask = "*"
-flask-pymongo = "*"
 requests = "*"
 
 [dev-packages]
