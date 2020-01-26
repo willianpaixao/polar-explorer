@@ -10,7 +10,7 @@ def oauth2_callback():
     if request.args.get('error'):
         current_app.logger.error('Error retrieving code: ' + request.args.get('error'))
         return 'Error'
-    token_endpoint = 'https://polarremote.com/v2/oauth2/token'
+    token_endpoint = 'https://polarremote.com/v2/oauth2/token'  # nosec
     session['token'] = client.fetch_token(token_endpoint, authorization_response=request.url)
     current_app.config.update(
         ACCESS_TOKEN=session['token']['access_token'],
@@ -22,12 +22,9 @@ def oauth2_callback():
 
 @auth.route('/')
 def index():
-    if current_app.config['ENV'] == 'testing':
-        return 'Hello, World!'
     if 'ACCESS_TOKEN' not in current_app.config:
-        global client
         client = OAuth2Session(current_app.config['CLIENT_ID'], current_app.config['CLIENT_SECRET'], scope='accesslink.read_all')
         authorization_endpoint = 'https://flow.polar.com/oauth2/authorization'
         uri, state = client.create_authorization_url(authorization_endpoint)
         return render_template('index.html', uri=uri)
-    return redirect(url_for('fetch.get_user_info', user_id=session['token']['x_user_id']))
+    return redirect(url_for('fetch.get_user_info', user_id=current_app.config['USER_ID']))

@@ -6,10 +6,13 @@ name = "pypi"
 [packages]
 authlib = "*"
 flask = "*"
+flask-pymongo = "*"
 requests = "*"
 
 [dev-packages]
 flake8 = "*"
+flake8-bugbear = "*"
+pre-commit = "*"
 pytest = "*"
 pytest-cov = "*"
 

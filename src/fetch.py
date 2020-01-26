@@ -23,7 +23,7 @@ class BearerAuth(AuthBase):
 @click.option('-d', '--data', envvar='DATA_DIR', help='Directory to store the data')
 @click.option('-t', '--token', required=True, envvar='ACCESS_TOKEN', help='OAuth2 Access Token.')
 @click.option('-u', '--user-id', required=True, envvar='USER_ID', help='Polar user id.')
-def fetch_command(token, user_id, data=None):
+def fetch_command(token, user_id):
     fetch_fn(token=token, user_id=user_id)
 
 
@@ -74,6 +74,7 @@ def get_activity_summary(token=None, user_id=None, transaction_id=None, activity
     if r.status_code == 200:
         j = r.json()
         current_app.logger.info('Fetching activity summary of ' + j['date'] + '...')
+
         with open('daily-summary-' + str(j['id']) + '.json', 'w') as f:
             json.dump(j, f, indent=2)
 
