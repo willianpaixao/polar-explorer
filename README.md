@@ -8,8 +8,9 @@ An experimental project to extract data from [Polar Accesslink API](https://www.
 ## Getting Started
 
 #### SECRETS_FILE
-You need to provide a file containing the API key and secret if you want to
-make calls to the Polar API
+You need to provide a file containing the API key and secret if you want to make calls to the Polar API.
+
+> If you fail to properly pass an env file, the following error will appear in the logs: `ERROR: Secret file not provided, aborting...`.
 
 > NOTE: a lazy way to generate a `SECRET_KEY` for Flask is by simply running `python -c 'import uuid; print(uuid.uuid4());'`.
 
@@ -26,10 +27,5 @@ $ pip install pre-commit && pre-commit install
 ## Testing
 You can run the unit tests by running:
 ``` bash
-$ FLASK_ENV=testing PYTHONPATH=${PWD} pytest
-```
-
-To run the coverage tests, run:
-``` bash
-$ FLASK_ENV=testing PYTHONPATH=${PWD} pytest --cov=${PWD}
+$ FLASK_ENV=testing pytest
 ```

@@ -24,7 +24,11 @@ class BearerAuth(AuthBase):
 @fetch.route("/notifications")
 def get_notifications():
     r = get(current_app.config['BASE_URL'] + '/v3/notifications', auth=HTTPBasicAuth(current_app.config['CLIENT_ID'], current_app.config['CLIENT_SECRET']))
-    return jsonify(r.json())
+    if r.status_code == 200:
+        return jsonify(r.json())
+    elif r.status_code == 204:
+        current_app.logger.info('No new data available')
+        return redirect(url_for('fetch.get_user_info', user_id=current_app.config['USER_ID']))
 
 
 @fetch.cli.command('fetch')
@@ -101,12 +105,32 @@ def get_exercise_list(token=None, user_id=None):
     current_app.logger.debug("Starting an exercise transaction")
     url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/exercise-transactions'
     r = post(url=url, auth=BearerAuth(token=token))
-    current_app.logger.error(r.status_code)
     if r.status_code == 201:
-        return jsonify(r.json())
+        j = r.json()
+        get_exercises(token=token, user_id=user_id, transaction_id=j[u'transaction-id'])
     elif r.status_code == 204:
         current_app.logger.info('No new data available')
         return render_template('204.html')
+
+
+@fetch.route("/users/<int:user_id>/exercise-transactions/<int:transaction_id>")
+def get_exercises(token=None, user_id=None, transaction_id=None):
+    if not token:
+        token = current_app.config['ACCESS_TOKEN']
+    url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/exercise-transactions/' + str(transaction_id)
+    r = get(url=url, auth=BearerAuth(token=token))
+    if r.status_code == 200:
+        j = r.json()
+        for i in j[u'exercises']:
+            s = get(url=i, auth=BearerAuth(token=token))
+            k = s.json()
+            current_app.logger.info('Fetching exercise from ')
+            with open('exercise-' + str(k['id']) + '.json', 'w') as f:
+                json.dump(k, f, indent=2)
+        r = put(url=url, auth=BearerAuth(token=token))
+        if r.status_code == 200:
+            current_app.logger.info('All exercise information was successfully downloaded')
+            return redirect(url_for('fetch.get_notifications'))
 
 
 @fetch.route("/users/<int:user_id>/physical-information-transactions/<int:transaction_id>")
@@ -122,7 +146,6 @@ def list_user_physical_info(user_id, transaction_id):
             with open('physical-information-' + str(k['id']) + '.json', 'w') as f:
                 json.dump(k, f, indent=2)
         r = put(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
-        current_app.logger.info(r.status_code)
         if r.status_code == 200:
             current_app.logger.info('All physical information was successfully downloaded')
             return redirect(url_for('fetch.get_notifications'))

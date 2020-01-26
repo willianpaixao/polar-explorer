@@ -14,7 +14,7 @@ test:
   before_script:
     - pip install --no-cache-dir --requirement requirements.txt
   script:
-    - FLASK_ENV=testing PYTHONPATH=${PWD} pytest --cov=${PWD} --junitxml=pytest.xml
+    - FLASK_ENV=testing pytest --junitxml=pytest.xml
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     reports:
