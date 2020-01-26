@@ -9,9 +9,9 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True)
     configure_app(app)
 
-    from .fetch import fetch
+    from fetch import fetch
     app.register_blueprint(fetch)
-    from .auth import auth
+    from auth import auth
     app.register_blueprint(auth)
 
     return app

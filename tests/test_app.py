@@ -1,9 +1,13 @@
 import pytest
 
+import app
+
 
 @pytest.fixture
 def client():
     """ Creating an interface to mock a running application."""
+    with app.create_app().test_client() as client:
+        yield client
 
 
 def test_env(client):

@@ -1,7 +1,7 @@
 import json
 
 import click
-from flask import abort, Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, render_template, redirect, url_for
 from requests import post, get
 from requests.auth import AuthBase, HTTPBasicAuth
 
@@ -15,7 +15,9 @@ class BearerAuth(AuthBase):
         self.token = token
 
     def __call__(self, r):
-        r.headers["authorization"] = "Bearer " + self.token
+        r.headers['authorization'] = 'Bearer ' + self.token
+        r.headers['accept'] = 'application/json'
+        r.headers['content-type'] = 'application/json; charset=utf-8'
         return r
 
 
@@ -59,7 +61,7 @@ def get_activities(token=None, user_id=None, transaction_id=None):
             get_activity_summary(token=token, user_id=user_id, transaction_id=transaction_id, activity_id=activity_id)
     elif r.status_code == 404:
         current_app.logger.error("Activity not found")
-        abort(404)
+        return render_template('404.html')
 
 
 def get_activity_summary(token=None, user_id=None, transaction_id=None, activity_id=None):
@@ -74,7 +76,6 @@ def get_activity_summary(token=None, user_id=None, transaction_id=None, activity
     if r.status_code == 200:
         j = r.json()
         current_app.logger.info('Fetching activity summary of ' + j['date'] + '...')
-
         with open('daily-summary-' + str(j['id']) + '.json', 'w') as f:
             json.dump(j, f, indent=2)
 
@@ -85,13 +86,55 @@ def get_notifications():
     return jsonify(r.json())
 
 
-@fetch.route("/users/<user_id>")
+@fetch.route("/users/<int:user_id>/physical-information-transactions/<int:transaction_id>")
+def list_user_physical_info(user_id, transaction_id):
+    url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/physical-information-transactions/' + str(transaction_id)
+    r = get(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+    if r.status_code == 200:
+        j = r.json()
+        for i in j[u'physical-informations']:
+            s = get(url=i, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+            k = s.json()
+            current_app.logger.info('Fetching physical information of ' + k['created'] + '...')
+            with open('physical-information-' + str(k['id']) + '.json', 'w') as f:
+                json.dump(k, f, indent=2)
+        r = post(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+        if r.status_code == 200:
+            return redirect(url_for('fetch.notifications'))
+    elif r.status_code == 204:
+        current_app.logger.info('No new data available')
+        return render_template('204.html')
+    elif r.status_code == 404:
+        return render_template('404.html')
+
+
+@fetch.route("/users/<int:user_id>/physical-information-transactions")
+def get_user_physical_info(user_id):
+    """ Request physical information on the user
+
+    :param user_id: Polar user id
+    :return: User information in a JSON format
+    """
+    url = current_app.config['BASE_URL'] + '/v3/users/' + str(user_id) + '/physical-information-transactions'
+    r = post(url=url, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+    j = r.json()
+    if r.status_code == 201:
+        current_app.logger.info(j['transaction-id'])
+        return jsonify(r.json())
+    elif r.status_code == 204:
+        current_app.logger.info('No new data available')
+        return render_template('204.html')
+    elif r.status_code == 404:
+        return render_template('404.html')
+
+
+@fetch.route("/users/<int:user_id>")
 def get_user_info(user_id):
     """ Request profile information on the user
 
     :param user_id: Polar user id
     :return: User information in a JSON format
     """
-    r = get(current_app.config['BASE_URL'] + '/v3/users/' + user_id, auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
+    r = get(current_app.config['BASE_URL'] + '/v3/users/' + str(user_id), auth=BearerAuth(token=current_app.config['ACCESS_TOKEN']))
     if r.status_code == 200:
         return jsonify(r.json())
