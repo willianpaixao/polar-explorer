@@ -14,14 +14,21 @@ You need to provide a file containing the API key and secret if you want to make
 
 > NOTE: a lazy way to generate a `SECRET_KEY` for Flask is by simply running `python -c 'import uuid; print(uuid.uuid4());'`.
 
+#### Setting up the environment
+> NOTE: We assume you have [Pipenv](https://pipenv-fork.readthedocs.io/en/latest/) installed.
+
+``` bash
+$ pipenv install --dev && pipenv shell
+```
+
 #### Running in the command line
 ``` bash
 $ FLASK_ENV=development flask run
 ```
 ## Development
-Before committing your code, please install the pre-commit hooks:
+Before committing your code, please install the pre-commit hooks and test them:
 ``` bash
-$ pip install pre-commit && pre-commit install
+pre-commit install && pre-commit run --all
 ```
 
 ## Testing

@@ -19,3 +19,7 @@ test:
   artifacts:
     reports:
       junit: pytest.xml
+
+code_quality:
+  artifacts:
+    paths: [gl-code-quality-report.json]
