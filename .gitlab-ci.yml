@@ -11,10 +11,13 @@ stages:
 
 test:
   stage: test
+  variables:
+    FLASK_ENV: testing
+    SECRETS_FILE: secrets.env.sample
   before_script:
     - pip install --no-cache-dir --requirement requirements.txt
   script:
-    - FLASK_ENV=testing pytest --junitxml=pytest.xml
+    - pytest --junitxml=pytest.xml
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     reports:
