@@ -6,16 +6,27 @@
 An experimental project to extract data from [Polar Accesslink API](https://www.polar.com/accesslink-api), store locally and allow plot dashboards.
 
 ## Getting Started
+#### Polar Flow
+Well, it goes without saying that you need to have a Polar device and an account at [Polar Flow](https://flow.polar.com).
+Once you start generating data, you need to [register a new client application](https://admin.polaraccesslink.com) in order to get API keys and proceed fetching the data from Accesslink API.
 
 #### SECRETS_FILE
-You need to provide a file containing the API key and secret if you want to make calls to the Polar API.
+Then you will need to provide the keys in a file inside of the instance folder. [\[1\]](https://flask.palletsprojects.com/en/1.1.x/config/#instance-folders)
 
-> If you fail to properly pass an env file, the following error will appear in the logs: `ERROR: Secret file not provided, aborting...`.
+An optional `SECRET_KEY` will improve your application's security. [\[2\]](https://flask.palletsprojects.com/en/1.1.x/config/#SECRET_KEY)
+
+The following example of `SECRETS_FILE`:
+``` python
+CLIENT_ID="f3e94f75-3191-4999-9af2-7320c16a796e"
+CLIENT_SECRET="73d6dd0f-9d45-4874-9179-6a35321920a5"
+```
+
+> NOTE: if you fail to properly pass an env file, the following error will appear in the logs: `ERROR: Secret file not provided, aborting...`.
 
 > NOTE: a lazy way to generate a `SECRET_KEY` for Flask is by simply running `python -c 'import uuid; print(uuid.uuid4());'`.
 
 #### Setting up the environment
-> NOTE: We assume you have [Pipenv](https://pipenv-fork.readthedocs.io/en/latest/) installed.
+> NOTE: We assume you have [Pipenv](https://pipenv-fork.readthedocs.io/en/latest) installed.
 
 ``` bash
 $ pipenv install --dev && pipenv shell
@@ -34,5 +45,5 @@ pre-commit install && pre-commit run --all
 ## Testing
 You can run the unit tests by running:
 ``` bash
-$ FLASK_ENV=testing pytest
+FLASK_ENV=testing SECRETS_FILE=secrets.env.sample pytest --setup-show
 ```

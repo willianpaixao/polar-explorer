@@ -1,17 +1,11 @@
 import pytest
 
-import app
+from app import create_app
 
 
-@pytest.fixture
-def client():
-    """ Creating an interface to mock a running application."""
-    with app.create_app().test_client() as client:
-        yield client
-
-
-def test_env(client):
-    """ Make sure we're running the right environment."""
+def test_config():
+    """Test create_app without passing test config."""
+    assert create_app().testing
 
 
 def test_empty_db(client):
