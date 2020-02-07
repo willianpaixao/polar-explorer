@@ -1,13 +1,16 @@
 import logging
 import os
-import sys
 
 from flask import Flask
 
 
-def create_app():
+def create_app(test_config=None):
+    """Create and configure an instance of the Flask application."""
     app = Flask(__name__, instance_relative_config=True)
-    configure_app(app)
+    if test_config is None:
+        configure_app(app)
+    else:
+        app.config.update(test_config)
 
     from fetch import fetch
     app.register_blueprint(fetch)
@@ -24,16 +27,17 @@ def configure_app(app):
     """
     if app.config['ENV'] == 'development':
         app.config.from_object('config.DevelopmentConfig')
-        if 'SECRETS_FILE' not in os.environ:
-            app.logger.error("Secret file not provided, aborting...")
-            sys.exit()
+    if app.config['ENV'] == 'testing':
+        app.config.from_object('config.TestingConfig')
+
+    if 'SECRETS_FILE' in os.environ:
         try:
             app.config.from_envvar('SECRETS_FILE')
         except SyntaxError:
             app.logger.error("Invalid secret file '{}', aborting...", os.environ['SECRETS_FILE'])
-            sys.exit()
-        app.logger.info("Configuration loaded successfully")
-    if app.config['ENV'] == 'testing':
-        app.config.from_object('config.TestingConfig')
+    else:
+        app.logger.error("Secret file not provided, aborting...")
+
+    app.logger.info("Configuration loaded successfully")
 
     logging.getLogger("urllib3").setLevel(logging.WARNING)
