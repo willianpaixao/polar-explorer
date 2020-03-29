@@ -127,6 +127,10 @@ def get_exercises(token=None, user_id=None, transaction_id=None):
             current_app.logger.info('Fetching exercise from ')
             with open('exercise-' + str(k['id']) + '.json', 'w') as f:
                 json.dump(k, f, indent=2)
+            s = get(url=i + 'exercises/' + k['id'] + '/heart-rate-zones', auth=BearerAuth(token=token))
+            k = s.json()
+            with open('exercise-' + str(k['id']) + '.json', 'w') as f:
+                json.dump(k, f, indent=2)
         r = put(url=url, auth=BearerAuth(token=token))
         if r.status_code == 200:
             current_app.logger.info('All exercise information was successfully downloaded')

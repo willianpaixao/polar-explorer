@@ -6,11 +6,11 @@
 An experimental project to extract data from [Polar Accesslink API](https://www.polar.com/accesslink-api), store locally and allow plot dashboards.
 
 ## Getting Started
-#### Polar Flow
+### Polar Flow
 Well, it goes without saying that you need to have a Polar device and an account at [Polar Flow](https://flow.polar.com).
 Once you start generating data, you need to [register a new client application](https://admin.polaraccesslink.com) in order to get API keys and proceed fetching the data from Accesslink API.
 
-#### SECRETS_FILE
+### SECRETS_FILE
 Then you will need to provide the keys in a file inside of the instance folder. [\[1\]](https://flask.palletsprojects.com/en/1.1.x/config/#instance-folders)
 
 An optional `SECRET_KEY` will improve your application's security. [\[2\]](https://flask.palletsprojects.com/en/1.1.x/config/#SECRET_KEY)
@@ -25,25 +25,30 @@ CLIENT_SECRET="73d6dd0f-9d45-4874-9179-6a35321920a5"
 
 > NOTE: a lazy way to generate a `SECRET_KEY` for Flask is by simply running `python -c 'import uuid; print(uuid.uuid4());'`.
 
-#### Setting up the environment
-> NOTE: We assume you have [Pipenv](https://pipenv-fork.readthedocs.io/en/latest) installed.
+### Setting up the environment
+> NOTE: We assume you have [Pipenv](https://pipenv-fork.readthedocs.io/) installed.
 
 ``` bash
 $ pipenv install --dev && pipenv shell
 ```
 
-#### Running in the command line
+### Running in the command line
 ``` bash
 $ FLASK_ENV=development flask run
 ```
-## Development
-Before committing your code, please install the pre-commit hooks and test them:
+
+## Contributing
+### Development
+Before committing your code, please install the [pre-commit](https://pre-commit.com/) hooks and test them:
 ``` bash
 pre-commit install && pre-commit run --all
 ```
 
-## Testing
+### Testing
 You can run the unit tests by running:
 ``` bash
 FLASK_ENV=testing SECRETS_FILE=secrets.env.sample pytest --setup-show
 ```
+
+## License
+Distributed under the BSD 3-Clause License. See [LICENSE](LICENSE) for more information.
