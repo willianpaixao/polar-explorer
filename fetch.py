@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlparse
 
 import click
 from flask import Blueprint, current_app, jsonify, render_template, redirect, url_for
@@ -32,9 +33,8 @@ def get_notifications():
 
 
 @fetch.cli.command('fetch')
-@click.option('-d', '--data', envvar='DATA_DIR', help='Directory to store the data')
-@click.option('-t', '--token', required=True, envvar='ACCESS_TOKEN', help='OAuth2 Access Token.')
-@click.option('-u', '--user-id', required=True, envvar='USER_ID', help='Polar user id.')
+@click.option('-t', '--token', envvar='ACCESS_TOKEN', help='OAuth2 Access Token.')
+@click.option('-u', '--user-id', envvar='USER_ID', help='Polar user id.')
 def fetch_command(token, user_id):
     get_activities_list(token=token, user_id=user_id)
 
@@ -122,19 +122,27 @@ def get_exercises(token=None, user_id=None, transaction_id=None):
     if r.status_code == 200:
         j = r.json()
         for i in j[u'exercises']:
+            exercise_id = urlparse(i)[2].rpartition('/')[2]
             s = get(url=i, auth=BearerAuth(token=token))
-            k = s.json()
-            current_app.logger.info('Fetching exercise from ')
-            with open('exercise-' + str(k['id']) + '.json', 'w') as f:
-                json.dump(k, f, indent=2)
-            s = get(url=i + 'exercises/' + k['id'] + '/heart-rate-zones', auth=BearerAuth(token=token))
-            k = s.json()
-            with open('exercise-' + str(k['id']) + '.json', 'w') as f:
-                json.dump(k, f, indent=2)
+            if s.status_code == 200:
+                k = s.json()
+                current_app.logger.info('Fetching exercise from ' + exercise_id)
+                with open('exercise-' + exercise_id + '.json', 'a') as f:
+                    json.dump(k, f, indent=2)
+            s = get(url=i + '/heart-rate-zones', auth=BearerAuth(token=token))
+            if s.status_code == 200:
+                k = s.json()
+                current_app.logger.info('Fetching heart rate zones from exercise ' + exercise_id)
+                with open('exercise-' + exercise_id + '.json', 'a') as f:
+                    json.dump(k, f, indent=2)
+
         r = put(url=url, auth=BearerAuth(token=token))
         if r.status_code == 200:
             current_app.logger.info('All exercise information was successfully downloaded')
             return redirect(url_for('fetch.get_notifications'))
+    elif r.status_code == 204:
+        current_app.logger.info('No new data available')
+        return render_template('204.html')
 
 
 @fetch.route("/users/<int:user_id>/physical-information-transactions/<int:transaction_id>")

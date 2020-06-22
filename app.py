@@ -12,6 +12,7 @@ def create_app(test_config=None):
     else:
         app.config.update(test_config)
 
+    # Add blueprints to main application
     from fetch import fetch
     app.register_blueprint(fetch)
     from auth import auth
@@ -40,4 +41,8 @@ def configure_app(app):
 
     app.logger.info("Configuration loaded successfully")
 
+    if not app.config['SECRET_KEY']:
+        raise ValueError("No SECRET_KEY set for Flask application")
+
+    # The following libraries gives excessive logging, so fine tuning is needed
     logging.getLogger("urllib3").setLevel(logging.WARNING)

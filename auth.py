@@ -10,6 +10,7 @@ def oauth2_callback():
     if request.args.get('error'):
         current_app.logger.error('Error retrieving code: ' + request.args.get('error'))
         return 'Error'
+    client = OAuth2Session(current_app.config['CLIENT_ID'], current_app.config['CLIENT_SECRET'], scope='accesslink.read_all')
     token_endpoint = 'https://polarremote.com/v2/oauth2/token'  # nosec
     session['token'] = client.fetch_token(token_endpoint, authorization_response=request.url)
     current_app.config.update(
